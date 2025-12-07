@@ -1,4 +1,4 @@
-defmodule Bonfire.ExtensionTemplate.RuntimeConfig do
+defmodule Bonfire.Translation.RuntimeConfig do
   use Bonfire.Common.Localise
 
   @behaviour Bonfire.Common.ConfigModule
@@ -10,7 +10,7 @@ defmodule Bonfire.ExtensionTemplate.RuntimeConfig do
   def config do
     import Config
 
-    # config :bonfire_extension_template,
-    #   modularity: System.get_env("ENABLE_bonfire_extension_template") || :disabled
+    # config :bonfire_translation,
+    #   modularity: System.get_env("ENABLE_bonfire_translation") || :disabled
   end
 end
