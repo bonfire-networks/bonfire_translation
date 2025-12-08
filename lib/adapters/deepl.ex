@@ -12,6 +12,13 @@ defmodule Bonfire.Translation.DeepL do
 
   use Bonfire.Common.Utils
   alias Bonfire.Common.Config
+  import Bonfire.UI.Common.Modularity.DeclareHelpers
+
+  declare_settings(:input, l("DeepL API Key"),
+    keys: [Bonfire.Translation.DeepL, :api_key],
+    description: l("Enter your API key for DeepL, if using DeepL as a translation service")
+    # scope: :user
+  )
 
   @impl true
   def translation_adapter, do: __MODULE__

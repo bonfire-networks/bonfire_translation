@@ -13,6 +13,13 @@ defmodule Bonfire.Translation.LibreTranslate do
 
   use Bonfire.Common.Utils
   alias Bonfire.Common.Config
+  import Bonfire.UI.Common.Modularity.DeclareHelpers
+
+  declare_settings(:input, l("LibreTranslate API Key"),
+    keys: [Bonfire.Translation.LibreTranslate, :api_key],
+    description: l("Enter your API key for LibreTranslate, if required")
+    # scope: :user
+  )
 
   @impl true
   def translation_adapter, do: __MODULE__
