@@ -217,7 +217,7 @@ defmodule Bonfire.Translation do
   """
   def adapters do
     # Allow process-level override for testing
-    case Process.get(:bonfire_translation_adapters) do
+    case ProcessTree.get(:bonfire_translation_adapters) do
       adapters_list when is_list(adapters_list) and adapters_list != [] ->
         adapters_list
         |> IO.inspect(label: "Using process-level translation adapters")
