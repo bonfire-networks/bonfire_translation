@@ -7,7 +7,7 @@ defmodule Bonfire.Translation.RuntimeConfig do
 
   declare_settings(:input, l("LibreTranslate URL"),
     keys: [Bonfire.Translation.LibreTranslate, :base_url],
-    description: l("Enter the URL for the LibreTranslate service you are using"),
+    description: l("Enter the URL for the LibreTranslate service you are using")
     # scope: :user
   )
 

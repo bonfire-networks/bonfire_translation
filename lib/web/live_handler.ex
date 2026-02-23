@@ -51,5 +51,4 @@ defmodule Bonfire.Translation.LiveHandler do
          })}
     end
   end
-
 end

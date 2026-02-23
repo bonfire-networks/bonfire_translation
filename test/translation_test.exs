@@ -150,7 +150,12 @@ defmodule Bonfire.Translation.Test do
       [adapter | _] = Bonfire.Translation.Behaviour.modules()
       saved = Application.get_env(:bonfire, adapter)
       Application.put_env(:bonfire, adapter, api_key: "test-key")
-      on_exit(fn -> if saved, do: Application.put_env(:bonfire, adapter, saved), else: Application.delete_env(:bonfire, adapter) end)
+
+      on_exit(fn ->
+        if saved,
+          do: Application.put_env(:bonfire, adapter, saved),
+          else: Application.delete_env(:bonfire, adapter)
+      end)
 
       assert Translation.any_adapter_configured?()
     end
@@ -159,7 +164,12 @@ defmodule Bonfire.Translation.Test do
       [adapter | _] = Bonfire.Translation.Behaviour.modules()
       saved = Application.get_env(:bonfire, adapter)
       Application.put_env(:bonfire, adapter, base_url: "http://localhost:5000")
-      on_exit(fn -> if saved, do: Application.put_env(:bonfire, adapter, saved), else: Application.delete_env(:bonfire, adapter) end)
+
+      on_exit(fn ->
+        if saved,
+          do: Application.put_env(:bonfire, adapter, saved),
+          else: Application.delete_env(:bonfire, adapter)
+      end)
 
       assert Translation.any_adapter_configured?()
     end
