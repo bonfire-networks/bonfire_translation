@@ -209,6 +209,15 @@ defmodule Bonfire.Translation do
     end)
   end
 
+  @doc "Checks if any translation adapter has config (API key or base URL) set at instance level. Lightweight, no HTTP calls."
+  def any_adapter_configured? do
+    Behaviour.modules()
+    |> Enum.any?(fn adapter ->
+      config = Config.get(adapter, [])
+      not is_nil(config[:api_key]) or not is_nil(config[:base_url])
+    end)
+  end
+
   @doc """
   Returns list of configured and available adapters, ordered by priority.
 
@@ -220,7 +229,7 @@ defmodule Bonfire.Translation do
     case ProcessTree.get(:bonfire_translation_adapters) do
       adapters_list when is_list(adapters_list) and adapters_list != [] ->
         adapters_list
-        |> IO.inspect(label: "Using process-level translation adapters")
+        |> debug("Using process-level translation adapters")
         |> Enum.filter(&adapter_available?/1)
 
       _ ->

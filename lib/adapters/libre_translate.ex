@@ -13,6 +13,7 @@ defmodule Bonfire.Translation.LibreTranslate do
 
   use Bonfire.Common.Utils
   alias Bonfire.Common.Config
+  alias Bonfire.Common.Settings
   import Bonfire.UI.Common.Modularity.DeclareHelpers
 
   declare_settings(:input, l("LibreTranslate API Key"),
@@ -31,7 +32,7 @@ defmodule Bonfire.Translation.LibreTranslate do
 
   @impl true
   def translate(text, source_lang, target_lang, opts) do
-    maybe_configure()
+    maybe_configure(opts)
 
     source = source_lang || "auto"
     format = normalize_format(opts[:format])
@@ -66,7 +67,7 @@ defmodule Bonfire.Translation.LibreTranslate do
 
   @impl true
   def detect_language(text) do
-    maybe_configure()
+    maybe_configure([])
 
     case LibreTranslate.Detector.detect(text) do
       {:ok, [%{"language" => lang, "confidence" => confidence} | _]} ->
@@ -82,7 +83,7 @@ defmodule Bonfire.Translation.LibreTranslate do
 
   @impl true
   def supported_languages do
-    maybe_configure()
+    maybe_configure([])
 
     case LibreTranslate.Language.get_languages() do
       {:ok, languages} ->
@@ -120,7 +121,7 @@ defmodule Bonfire.Translation.LibreTranslate do
 
   @impl true
   def available? do
-    maybe_configure()
+    maybe_configure([])
 
     result = LibreTranslate.Health.healthy?()
 
@@ -145,8 +146,8 @@ defmodule Bonfire.Translation.LibreTranslate do
   defp normalize_format("html"), do: "html"
   defp normalize_format(_), do: "text"
 
-  defp maybe_configure do
-    config = Config.get(__MODULE__, [])
+  defp maybe_configure(opts) do
+    config = Settings.get(__MODULE__, Config.get(__MODULE__, []), opts)
 
     if config[:base_url] do
       LibreTranslate.set_base_url(config[:base_url])

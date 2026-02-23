@@ -12,6 +12,7 @@ defmodule Bonfire.Translation.DeepL do
 
   use Bonfire.Common.Utils
   alias Bonfire.Common.Config
+  alias Bonfire.Common.Settings
   import Bonfire.UI.Common.Modularity.DeclareHelpers
 
   declare_settings(:input, l("DeepL API Key"),
@@ -30,7 +31,7 @@ defmodule Bonfire.Translation.DeepL do
 
   @impl true
   def translate(text, source_lang, target_lang, opts) do
-    maybe_configure()
+    maybe_configure(opts)
 
     lib_opts =
       opts
@@ -61,7 +62,7 @@ defmodule Bonfire.Translation.DeepL do
 
   @impl true
   def detect_language(text) do
-    maybe_configure()
+    maybe_configure([])
 
     case Deepl.Translator.translate(text, "EN") do
       {:ok, %{"translations" => [%{"detected_source_language" => lang} | _]}} ->
@@ -74,7 +75,7 @@ defmodule Bonfire.Translation.DeepL do
 
   @impl true
   def supported_languages do
-    maybe_configure()
+    maybe_configure([])
 
     case Deepl.Language.get_languages() do
       {:ok, languages} ->
@@ -153,8 +154,8 @@ defmodule Bonfire.Translation.DeepL do
     Keyword.put(opts, :source_lang, normalize_lang_code_for_api(source_lang))
   end
 
-  defp maybe_configure do
-    config = Config.get(__MODULE__, [])
+  defp maybe_configure(opts) do
+    config = Settings.get(__MODULE__, Config.get(__MODULE__, []), opts)
 
     if config[:api_key] do
       Deepl.set_api_key(config[:api_key])
