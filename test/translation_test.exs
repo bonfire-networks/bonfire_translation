@@ -146,45 +146,29 @@ defmodule Bonfire.Translation.Test do
 
   describe "any_adapter_configured?/0" do
     test "returns true when adapter has api_key" do
-      # Use a registered behaviour module (set config on each discovered adapter)
       [adapter | _] = Bonfire.Translation.Behaviour.modules()
-      saved = Application.get_env(:bonfire, adapter)
-      Application.put_env(:bonfire, adapter, api_key: "test-key")
+      Process.put([:bonfire_translation, adapter], api_key: "test-key")
 
-      on_exit(fn ->
-        if saved,
-          do: Application.put_env(:bonfire, adapter, saved),
-          else: Application.delete_env(:bonfire, adapter)
-      end)
+      on_exit(fn -> Process.delete([:bonfire_translation, adapter]) end)
 
       assert Translation.any_adapter_configured?()
     end
 
     test "returns true when adapter has only base_url (keyless LibreTranslate)" do
       [adapter | _] = Bonfire.Translation.Behaviour.modules()
-      saved = Application.get_env(:bonfire, adapter)
-      Application.put_env(:bonfire, adapter, base_url: "http://localhost:5000")
+      Process.put([:bonfire_translation, adapter], base_url: "http://localhost:5000")
 
-      on_exit(fn ->
-        if saved,
-          do: Application.put_env(:bonfire, adapter, saved),
-          else: Application.delete_env(:bonfire, adapter)
-      end)
+      on_exit(fn -> Process.delete([:bonfire_translation, adapter]) end)
 
       assert Translation.any_adapter_configured?()
     end
 
     test "returns false when no adapter has config" do
-      # Get all registered adapter modules and save/clear their config
       modules = Bonfire.Translation.Behaviour.modules()
-      saved = Enum.map(modules, fn mod -> {mod, Application.get_env(:bonfire, mod)} end)
-      Enum.each(modules, fn mod -> Application.delete_env(:bonfire, mod) end)
+      Enum.each(modules, fn mod -> Process.put([:bonfire_translation, mod], []) end)
 
       on_exit(fn ->
-        Enum.each(saved, fn
-          {mod, nil} -> Application.delete_env(:bonfire, mod)
-          {mod, config} -> Application.put_env(:bonfire, mod, config)
-        end)
+        Enum.each(modules, fn mod -> Process.delete([:bonfire_translation, mod]) end)
       end)
 
       refute Translation.any_adapter_configured?()

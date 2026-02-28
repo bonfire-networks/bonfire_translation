@@ -44,13 +44,13 @@ defmodule Bonfire.Translation.IntegrationTest do
   defp configure_from_env do
     # Configure LibreTranslate from env
     if url = System.get_env("LIBRETRANSLATE_URL") do
-      Application.put_env(:bonfire_translation, Bonfire.Translation.LibreTranslate, base_url: url)
+      Process.put([:bonfire_translation, Bonfire.Translation.LibreTranslate], base_url: url)
       Process.put(:bonfire_translation_adapters, [Bonfire.Translation.LibreTranslate])
     end
 
-    # Configure DeepL from env  
+    # Configure DeepL from env
     if key = System.get_env("DEEPL_API_KEY") do
-      Application.put_env(:bonfire_translation, Bonfire.Translation.DeepL, api_key: key)
+      Process.put([:bonfire_translation, Bonfire.Translation.DeepL], api_key: key)
       Process.put(:bonfire_translation_adapters, [Bonfire.Translation.DeepL])
     end
 
