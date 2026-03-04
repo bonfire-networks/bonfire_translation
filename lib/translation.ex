@@ -209,11 +209,11 @@ defmodule Bonfire.Translation do
     end)
   end
 
-  @doc "Checks if any translation adapter has config (API key or base URL) set at instance level. Lightweight, no HTTP calls."
-  def any_adapter_configured? do
+  @doc "Checks if any translation adapter has settings (API key or base URL) set at instance level. Lightweight, no HTTP calls."
+  def any_adapter_configured?(opts) do
     Behaviour.modules()
     |> Enum.any?(fn adapter ->
-      config = Config.get(adapter, [])
+      config = Settings.get(adapter, [], opts)
       not is_nil(config[:api_key]) or not is_nil(config[:base_url])
     end)
   end
@@ -224,24 +224,23 @@ defmodule Bonfire.Translation do
   Adapters are sorted by their `:priority` config value (lower = higher priority).
   Default priority is 0.
   """
-  def adapters do
+  def adapters(opts) do
     # Allow process-level override for testing
     case ProcessTree.get(:bonfire_translation_adapters) do
       adapters_list when is_list(adapters_list) and adapters_list != [] ->
         adapters_list
         |> debug("Using process-level translation adapters")
-        |> Enum.filter(&adapter_available?/1)
 
       _ ->
         # Get all registered adapters from the behaviour
         Behaviour.modules()
-        |> Enum.filter(&adapter_available?/1)
-        |> Enum.sort_by(&adapter_priority/1)
     end
+    |> Enum.filter(fn adapter -> adapter_available?(adapter, opts) end)
+    |> Enum.sort_by(fn adapter -> adapter_priority(adapter, opts) end)
   end
 
-  defp adapter_priority(adapter) do
-    Config.get([adapter, :priority], 0)
+  defp adapter_priority(adapter, opts) do
+    Settings.get([adapter, :priority], 0, opts)
   end
 
   # --- Private ---
@@ -327,9 +326,9 @@ defmodule Bonfire.Translation do
     end)
   end
 
-  defp adapter_available?(adapter) do
-    if function_exported?(adapter, :available?, 0) do
-      safe_call(adapter, :available?, []) == true
+  defp adapter_available?(adapter, opts) do
+    if function_exported?(adapter, :available?, 1) do
+      safe_call(adapter, :available?, opts) == true
     else
       Code.ensure_loaded?(adapter)
     end

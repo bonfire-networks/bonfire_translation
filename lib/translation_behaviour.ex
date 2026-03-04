@@ -75,16 +75,16 @@ defmodule Bonfire.Translation.Behaviour do
   @doc """
   Checks if the translation service is available and configured.
   """
-  @callback available?() :: boolean()
+  @callback available?(opts) :: boolean()
 
   @optional_callbacks [
     translation_adapter: 0,
     translate: 3,
     translate_batch: 4,
-    detect_language: 1,
-    supported_languages: 0,
+    detect_language: 2,
+    supported_languages: 1,
     supports_pair?: 2,
-    available?: 0
+    available?: 1
   ]
 
   @doc """

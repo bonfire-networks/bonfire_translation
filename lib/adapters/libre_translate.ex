@@ -12,7 +12,6 @@ defmodule Bonfire.Translation.LibreTranslate do
   @behaviour Bonfire.Translation.Behaviour
 
   use Bonfire.Common.Utils
-  alias Bonfire.Common.Config
   alias Bonfire.Common.Settings
   import Bonfire.UI.Common.Modularity.DeclareHelpers
 
@@ -34,15 +33,36 @@ defmodule Bonfire.Translation.LibreTranslate do
   def translate(text, source_lang, target_lang, opts) do
     maybe_configure(opts)
 
-    source = source_lang || "auto"
-    format = normalize_format(opts[:format])
+    source_lang = source_lang || "auto"
 
-    lib_opts =
+    opts =
       opts
-      |> Keyword.delete(:format)
-      |> Keyword.put(:format, format)
+      |> Keyword.put(:format, normalize_format(opts[:format]))
 
-    case LibreTranslate.Translator.translate(text, source, target_lang, lib_opts) do
+    do_translate(text, source_lang, target_lang, opts)
+  end
+
+  @impl true
+  def translate_batch(texts, source_lang, target_lang, opts) do
+    maybe_configure(opts)
+
+    source_lang = source_lang || "auto"
+
+    opts =
+      opts
+      |> Keyword.put(:format, normalize_format(opts[:format]))
+
+    # LibreTranslate doesn't have native batch, so we translate sequentially
+    Enum.reduce_while(texts, {:ok, []}, fn text, {:ok, acc} ->
+      case translate(text, source_lang, target_lang, opts) do
+        {:ok, translated} -> {:cont, {:ok, acc ++ [translated]}}
+        {:error, _} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp do_translate(text, source_lang, target_lang, opts) do
+    case LibreTranslate.Translator.translate(text, source_lang, target_lang, lib_opts) do
       {:ok, %{"translatedText" => translated}} ->
         {:ok, translated}
 
@@ -55,19 +75,8 @@ defmodule Bonfire.Translation.LibreTranslate do
   end
 
   @impl true
-  def translate_batch(texts, source_lang, target_lang, opts) do
-    # LibreTranslate doesn't have native batch, so we translate sequentially
-    Enum.reduce_while(texts, {:ok, []}, fn text, {:ok, acc} ->
-      case translate(text, source_lang, target_lang, opts) do
-        {:ok, translated} -> {:cont, {:ok, acc ++ [translated]}}
-        {:error, _} = error -> {:halt, error}
-      end
-    end)
-  end
-
-  @impl true
-  def detect_language(text) do
-    maybe_configure([])
+  def detect_language(text, opts) do
+    maybe_configure(opts)
 
     case LibreTranslate.Detector.detect(text) do
       {:ok, [%{"language" => lang, "confidence" => confidence} | _]} ->
@@ -82,8 +91,8 @@ defmodule Bonfire.Translation.LibreTranslate do
   end
 
   @impl true
-  def supported_languages do
-    maybe_configure([])
+  def supported_languages(opts) do
+    maybe_configure(opts)
 
     case LibreTranslate.Language.get_languages() do
       {:ok, languages} ->
@@ -120,15 +129,10 @@ defmodule Bonfire.Translation.LibreTranslate do
   end
 
   @impl true
-  def available? do
-    maybe_configure([])
+  def available?(opts) do
+    maybe_configure(opts)
 
-    result = LibreTranslate.Health.healthy?()
-
-    case result do
-      true -> true
-      _ -> false
-    end
+    LibreTranslate.Health.healthy?() || false
   rescue
     e ->
       false
@@ -147,7 +151,7 @@ defmodule Bonfire.Translation.LibreTranslate do
   defp normalize_format(_), do: "text"
 
   defp maybe_configure(opts) do
-    config = Settings.get(__MODULE__, Config.get(__MODULE__, []), opts)
+    config = Settings.get(__MODULE__, opts)
 
     if config[:base_url] do
       LibreTranslate.set_base_url(config[:base_url])

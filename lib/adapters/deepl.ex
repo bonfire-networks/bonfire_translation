@@ -11,7 +11,6 @@ defmodule Bonfire.Translation.DeepL do
   @behaviour Bonfire.Translation.Behaviour
 
   use Bonfire.Common.Utils
-  alias Bonfire.Common.Config
   alias Bonfire.Common.Settings
   import Bonfire.UI.Common.Modularity.DeclareHelpers
 
@@ -33,12 +32,37 @@ defmodule Bonfire.Translation.DeepL do
   def translate(text, source_lang, target_lang, opts) do
     maybe_configure(opts)
 
-    lib_opts =
+    opts =
       opts
       |> normalize_opts()
       |> maybe_add_source_lang(source_lang)
 
-    case Deepl.Translator.translate(text, normalize_lang_code_for_api(target_lang), lib_opts) do
+    target_lang = normalize_lang_code_for_api(target_lang)
+
+    do_translate(text, target_lang, opts)
+  end
+
+  @impl true
+  def translate_batch(texts, source_lang, target_lang, opts) do
+    maybe_configure(opts)
+
+    opts =
+      opts
+      |> normalize_opts()
+      |> maybe_add_source_lang(source_lang)
+
+    target_lang = normalize_lang_code_for_api(target_lang)
+
+    Enum.reduce_while(texts, {:ok, []}, fn text, {:ok, acc} ->
+      case do_translate(text, target_lang, opts) do
+        {:ok, translated} -> {:cont, {:ok, acc ++ [translated]}}
+        {:error, _} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp do_translate(text, target_lang, opts) do
+    case Deepl.Translator.translate(text, target_lang, opts) do
       {:ok, %{"translations" => [%{"text" => translated} | _]}} ->
         {:ok, translated}
 
@@ -51,18 +75,8 @@ defmodule Bonfire.Translation.DeepL do
   end
 
   @impl true
-  def translate_batch(texts, source_lang, target_lang, opts) do
-    Enum.reduce_while(texts, {:ok, []}, fn text, {:ok, acc} ->
-      case translate(text, source_lang, target_lang, opts) do
-        {:ok, translated} -> {:cont, {:ok, acc ++ [translated]}}
-        {:error, _} = error -> {:halt, error}
-      end
-    end)
-  end
-
-  @impl true
-  def detect_language(text) do
-    maybe_configure([])
+  def detect_language(text, opts) do
+    maybe_configure(opts)
 
     case Deepl.Translator.translate(text, "EN") do
       {:ok, %{"translations" => [%{"detected_source_language" => lang} | _]}} ->
@@ -74,8 +88,8 @@ defmodule Bonfire.Translation.DeepL do
   end
 
   @impl true
-  def supported_languages do
-    maybe_configure([])
+  def supported_languages(opts) do
+    maybe_configure(opts)
 
     case Deepl.Language.get_languages() do
       {:ok, languages} ->
@@ -118,8 +132,8 @@ defmodule Bonfire.Translation.DeepL do
   end
 
   @impl true
-  def available? do
-    config = Config.get(__MODULE__, [])
+  def available?(opts) do
+    config = Settings.get(__MODULE__, [], opts)
     not is_nil(config[:api_key])
   end
 
@@ -155,9 +169,7 @@ defmodule Bonfire.Translation.DeepL do
   end
 
   defp maybe_configure(opts) do
-    config = Settings.get(__MODULE__, Config.get(__MODULE__, []), opts)
-
-    if config[:api_key] do
+    if api_key = Settings.get([__MODULE__, :api_key], [], opts) do
       Deepl.set_api_key(config[:api_key])
     end
   end
