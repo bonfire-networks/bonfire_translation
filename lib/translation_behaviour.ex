@@ -57,13 +57,13 @@ defmodule Bonfire.Translation.Behaviour do
   Detects the language of the given text.
   Returns the detected language code and confidence score (0.0 to 1.0).
   """
-  @callback detect_language(text :: String.t()) ::
+  @callback detect_language(text :: String.t(), opts :: keyword()) ::
               {:ok, %{language: String.t(), confidence: float()}} | {:error, term()}
 
   @doc """
   Returns list of supported languages with their available target languages.
   """
-  @callback supported_languages() ::
+  @callback supported_languages(opts :: keyword()) ::
               {:ok, [%{code: String.t(), name: String.t(), targets: [String.t()]}]}
               | {:error, term()}
 
@@ -75,7 +75,7 @@ defmodule Bonfire.Translation.Behaviour do
   @doc """
   Checks if the translation service is available and configured.
   """
-  @callback available?(opts) :: boolean()
+  @callback available?(opts :: keyword()) :: boolean()
 
   @optional_callbacks [
     translation_adapter: 0,
