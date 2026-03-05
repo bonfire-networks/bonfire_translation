@@ -32,7 +32,7 @@ defmodule Bonfire.Translation.IntegrationTest do
     configure_from_env()
 
     # Check if any adapter is available
-    case Translation.adapters() do
+    case Translation.adapters([]) do
       [] ->
         {:skip, "No translation adapters available. Configure LibreTranslate or DeepL."}
 
@@ -71,7 +71,7 @@ defmodule Bonfire.Translation.IntegrationTest do
 
   describe "supported_languages/0" do
     test "returns list of supported languages" do
-      assert {:ok, languages} = Translation.supported_languages()
+      assert {:ok, languages} = Translation.supported_languages([])
       assert is_list(languages)
       assert length(languages) > 0
 
@@ -89,20 +89,20 @@ defmodule Bonfire.Translation.IntegrationTest do
   describe "supports_pair?/2" do
     test "returns true for common language pairs" do
       # These pairs should be supported by most translation services
-      assert Translation.supports_pair?("en", "fr")
-      assert Translation.supports_pair?("en", "es")
-      assert Translation.supports_pair?("fr", "en")
+      assert Translation.supports_pair?("en", "fr", [])
+      assert Translation.supports_pair?("en", "es", [])
+      assert Translation.supports_pair?("fr", "en", [])
     end
 
     test "handles uppercase language codes" do
-      assert Translation.supports_pair?("EN", "FR")
+      assert Translation.supports_pair?("EN", "FR", [])
     end
   end
 
   describe "detect_language/1" do
     test "detects French text" do
       assert {:ok, %{language: lang, confidence: confidence}} =
-               Translation.detect_language("Bonjour, comment allez-vous aujourd'hui?")
+               Translation.detect_language("Bonjour, comment allez-vous aujourd'hui?", [])
 
       assert lang == "fr"
       assert is_float(confidence)
@@ -111,7 +111,7 @@ defmodule Bonfire.Translation.IntegrationTest do
 
     test "detects English text" do
       assert {:ok, %{language: lang, confidence: confidence}} =
-               Translation.detect_language("Hello, how are you doing today?")
+               Translation.detect_language("Hello, how are you doing today?", [])
 
       assert lang == "en"
       assert is_float(confidence)
@@ -120,7 +120,7 @@ defmodule Bonfire.Translation.IntegrationTest do
 
     test "detects Spanish text" do
       assert {:ok, %{language: lang, confidence: _}} =
-               Translation.detect_language("Hola, ¿cómo estás hoy?")
+               Translation.detect_language("Hola, ¿cómo estás hoy?", [])
 
       assert lang == "es"
     end
@@ -129,10 +129,10 @@ defmodule Bonfire.Translation.IntegrationTest do
       text = "Hola, ¿cómo estás hoy?"
 
       # First call
-      assert {:ok, %{language: "es"}} = Translation.detect_language(text)
+      assert {:ok, %{language: "es"}} = Translation.detect_language(text, [])
 
       # Second call should use cache (we can't easily verify this without checking internals, but at least verify it returns same result)
-      assert {:ok, %{language: "es"}} = Translation.detect_language(text)
+      assert {:ok, %{language: "es"}} = Translation.detect_language(text, [])
     end
   end
 

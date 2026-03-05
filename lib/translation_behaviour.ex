@@ -70,7 +70,11 @@ defmodule Bonfire.Translation.Behaviour do
   @doc """
   Checks if translation between source and target language is supported.
   """
-  @callback supports_pair?(source_lang :: String.t(), target_lang :: String.t()) :: boolean()
+  @callback supports_pair?(
+              source_lang :: String.t(),
+              target_lang :: String.t(),
+              opts :: keyword()
+            ) :: boolean()
 
   @doc """
   Checks if the translation service is available and configured.
@@ -83,7 +87,7 @@ defmodule Bonfire.Translation.Behaviour do
     translate_batch: 4,
     detect_language: 2,
     supported_languages: 1,
-    supports_pair?: 2,
+    supports_pair?: 3,
     available?: 1
   ]
 

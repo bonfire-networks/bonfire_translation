@@ -152,13 +152,13 @@ defmodule Bonfire.Translation do
   @doc """
   Detects the language of the given text with caching.
   """
-  def detect_language(text) when is_binary(text) and byte_size(text) > 0 do
+  def detect_language(text, opts) when is_binary(text) and byte_size(text) > 0 do
     text_hash = hash_text(text)
     cache_key = language_cache_key(text_hash)
 
     case Cache.get!(cache_key) do
       nil ->
-        case do_detect_language(text) do
+        case do_detect_language(text, opts) do
           {:ok, result} = success ->
             cache_language(cache_key, result.language)
             success
@@ -173,20 +173,20 @@ defmodule Bonfire.Translation do
     end
   end
 
-  def detect_language(_), do: {:error, :empty_text}
+  def detect_language(_, _), do: {:error, :empty_text}
 
   @doc """
   Returns supported languages from all available adapters, merged and cached.
   """
-  def supported_languages do
-    Cache.maybe_apply_cached({__MODULE__, :do_get_supported_languages}, [], expire: ttl_ms())
+  def supported_languages(opts) do
+    Cache.maybe_apply_cached({__MODULE__, :do_get_supported_languages}, [opts], expire: ttl_ms())
   end
 
   @doc false
-  def do_get_supported_languages do
-    adapters()
+  def do_get_supported_languages(opts) do
+    adapters(opts)
     |> Enum.reduce({:ok, []}, fn adapter, {:ok, acc} ->
-      case safe_call(adapter, :supported_languages, []) do
+      case safe_call(adapter, :supported_languages, [opts]) do
         {:ok, languages} -> {:ok, acc ++ languages}
         _ -> {:ok, acc}
       end
@@ -200,20 +200,23 @@ defmodule Bonfire.Translation do
   @doc """
   Checks if any adapter supports the given language pair.
   """
-  def supports_pair?(source_lang, target_lang) do
+  def supports_pair?(source_lang, target_lang, opts) do
     source = normalize_lang_code(source_lang)
     target = normalize_lang_code(target_lang)
 
-    Enum.any?(adapters(), fn adapter ->
-      safe_call(adapter, :supports_pair?, [source, target]) == true
+    Enum.any?(adapters(opts), fn adapter ->
+      safe_call(adapter, :supports_pair?, [source, target, opts]) == true
     end)
   end
 
   @doc "Checks if any translation adapter has settings (API key or base URL) set at instance level. Lightweight, no HTTP calls."
   def any_adapter_configured?(opts) do
-    Behaviour.modules()
+    adapters_configured()
     |> Enum.any?(fn adapter ->
-      config = Settings.get(adapter, [], opts)
+      config =
+        Settings.get(adapter, [], opts)
+        |> flood("config for #{adapter}")
+
       not is_nil(config[:api_key]) or not is_nil(config[:base_url])
     end)
   end
@@ -226,17 +229,22 @@ defmodule Bonfire.Translation do
   """
   def adapters(opts) do
     # Allow process-level override for testing
+    adapters_configured()
+    |> Enum.filter(fn adapter -> adapter_available?(adapter, opts) end)
+    |> Enum.sort_by(fn adapter -> adapter_priority(adapter, opts) end)
+  end
+
+  def adapters_configured do
+    # Allow process-level override for testing
     case ProcessTree.get(:bonfire_translation_adapters) do
       adapters_list when is_list(adapters_list) and adapters_list != [] ->
         adapters_list
-        |> debug("Using process-level translation adapters")
+        |> flood("Using process-level translation adapters")
 
       _ ->
         # Get all registered adapters from the behaviour
         Behaviour.modules()
     end
-    |> Enum.filter(fn adapter -> adapter_available?(adapter, opts) end)
-    |> Enum.sort_by(fn adapter -> adapter_priority(adapter, opts) end)
   end
 
   defp adapter_priority(adapter, opts) do
@@ -278,11 +286,11 @@ defmodule Bonfire.Translation do
     end)
   end
 
-  defp do_detect_language(text) do
-    adapters()
+  defp do_detect_language(text, opts) do
+    adapters(opts)
     |> try_adapters(@max_attempts, fn adapter ->
-      if function_exported?(adapter, :detect_language, 1) do
-        adapter.detect_language(text)
+      if function_exported?(adapter, :detect_language, 2) do
+        adapter.detect_language(text, opts)
       else
         {:error, :not_supported}
       end
@@ -292,13 +300,13 @@ defmodule Bonfire.Translation do
   defp find_adapters_for_pair(source_lang, target_lang, opts) do
     case opts[:adapter] do
       nil ->
-        adapters()
+        adapters(opts)
         |> Enum.filter(fn adapter ->
           source_lang == nil or
-            safe_call(adapter, :supports_pair?, [source_lang, target_lang]) == true
+            safe_call(adapter, :supports_pair?, [source_lang, target_lang, opts]) == true
         end)
         |> case do
-          [] -> adapters()
+          [] -> adapters(opts)
           found -> found
         end
 
@@ -328,7 +336,7 @@ defmodule Bonfire.Translation do
 
   defp adapter_available?(adapter, opts) do
     if function_exported?(adapter, :available?, 1) do
-      safe_call(adapter, :available?, opts) == true
+      safe_call(adapter, :available?, [opts]) == true
     else
       Code.ensure_loaded?(adapter)
     end

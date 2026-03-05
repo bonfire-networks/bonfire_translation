@@ -49,7 +49,7 @@ defmodule Bonfire.Translation.TestAdapter do
   end
 
   @impl true
-  def detect_language(text) do
+  def detect_language(text, _opts) do
     if Process.get(:test_adapter_fail) do
       {:error, :simulated_failure}
     else
@@ -67,7 +67,7 @@ defmodule Bonfire.Translation.TestAdapter do
   end
 
   @impl true
-  def supported_languages do
+  def supported_languages(_opts) do
     {:ok,
      [
        %{code: "en", name: "English", targets: ["fr", "es"]},
@@ -77,8 +77,8 @@ defmodule Bonfire.Translation.TestAdapter do
   end
 
   @impl true
-  def supports_pair?(source_lang, target_lang) do
-    case supported_languages() do
+  def supports_pair?(source_lang, target_lang, opts) do
+    case supported_languages(opts) do
       {:ok, languages} ->
         Enum.any?(languages, fn lang ->
           lang.code == source_lang and target_lang in lang.targets
@@ -90,7 +90,7 @@ defmodule Bonfire.Translation.TestAdapter do
   end
 
   @impl true
-  def available? do
+  def available?(_opts) do
     not Process.get(:test_adapter_unavailable, false)
   end
 end

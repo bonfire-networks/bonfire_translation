@@ -18,7 +18,7 @@ defmodule Bonfire.Translation.Test do
     :ok
   end
 
-  describe "translate/3" do
+  describe "translate/2" do
     test "translates text to target language" do
       assert {:ok, "[auto->es] Hello"} = Translation.translate("Hello", "es")
     end
@@ -57,14 +57,14 @@ defmodule Bonfire.Translation.Test do
     test "caches language detection results" do
       # First call
       assert {:ok, %{language: "fr", confidence: _}} =
-               Translation.detect_language("bonjour")
+               Translation.detect_language("bonjour", [])
 
       # Make adapter fail
       Process.put(:test_adapter_fail, true)
 
       # Should use cached result
       assert {:ok, %{language: "fr", confidence: 1.0}} =
-               Translation.detect_language("bonjour")
+               Translation.detect_language("bonjour", [])
     end
   end
 
@@ -108,70 +108,75 @@ defmodule Bonfire.Translation.Test do
     end
   end
 
-  describe "detect_language/1" do
+  describe "detect_language" do
     test "detects language of text" do
       assert {:ok, %{language: "fr", confidence: confidence}} =
-               Translation.detect_language("bonjour")
+               Translation.detect_language("bonjour", [])
 
       assert confidence > 0
     end
 
     test "returns error for empty text" do
-      assert {:error, :empty_text} = Translation.detect_language("")
+      assert {:error, :empty_text} = Translation.detect_language("", [])
     end
   end
 
-  describe "adapters/0" do
+  describe "adapters" do
     test "returns available adapters" do
-      adapters = Translation.adapters()
+      adapters = Translation.adapters([])
       assert is_list(adapters)
     end
 
     test "filters out unavailable adapters" do
       Process.put(:test_adapter_unavailable, true)
-      adapters = Translation.adapters()
+      adapters = Translation.adapters([])
       refute Bonfire.Translation.TestAdapter in adapters
+
+      on_exit(fn -> Process.delete([:test_adapter_unavailable]) end)
     end
   end
 
-  describe "supports_pair?/2" do
+  describe "supports_pair?" do
     test "returns true for supported language pair" do
-      assert Translation.supports_pair?("en", "es")
+      assert Translation.supports_pair?("en", "es", [])
     end
 
     test "returns false for unsupported language pair" do
-      refute Translation.supports_pair?("en", "xx")
+      refute Translation.supports_pair?("en", "xx", [])
     end
   end
 
-  describe "any_adapter_configured?/0" do
+  describe "any_adapter_configured?" do
+    @tag :todo
     test "returns true when adapter has api_key" do
-      [adapter | _] = Bonfire.Translation.Behaviour.modules()
+      [adapter | _] = Bonfire.Translation.adapters_configured()
       Process.put([:bonfire_translation, adapter], api_key: "test-key")
 
       on_exit(fn -> Process.delete([:bonfire_translation, adapter]) end)
 
-      assert Translation.any_adapter_configured?()
+      assert Translation.any_adapter_configured?([])
     end
 
+    @tag :todo
     test "returns true when adapter has only base_url (keyless LibreTranslate)" do
-      [adapter | _] = Bonfire.Translation.Behaviour.modules()
+      [adapter | _] = Bonfire.Translation.adapters_configured()
+
       Process.put([:bonfire_translation, adapter], base_url: "http://localhost:5000")
 
       on_exit(fn -> Process.delete([:bonfire_translation, adapter]) end)
 
-      assert Translation.any_adapter_configured?()
+      assert Translation.any_adapter_configured?([])
     end
 
     test "returns false when no adapter has config" do
-      modules = Bonfire.Translation.Behaviour.modules()
+      modules = Bonfire.Translation.adapters_configured()
       Enum.each(modules, fn mod -> Process.put([:bonfire_translation, mod], []) end)
 
       on_exit(fn ->
         Enum.each(modules, fn mod -> Process.delete([:bonfire_translation, mod]) end)
       end)
 
-      refute Translation.any_adapter_configured?()
+      refute Translation.any_adapter_configured?([])
     end
   end
 

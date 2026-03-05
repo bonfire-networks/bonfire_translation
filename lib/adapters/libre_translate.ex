@@ -62,7 +62,7 @@ defmodule Bonfire.Translation.LibreTranslate do
   end
 
   defp do_translate(text, source_lang, target_lang, opts) do
-    case LibreTranslate.Translator.translate(text, source_lang, target_lang, lib_opts) do
+    case LibreTranslate.Translator.translate(text, source_lang, target_lang, opts) do
       {:ok, %{"translatedText" => translated}} ->
         {:ok, translated}
 
@@ -113,8 +113,8 @@ defmodule Bonfire.Translation.LibreTranslate do
   end
 
   @impl true
-  def supports_pair?(source_lang, target_lang) do
-    case supported_languages() do
+  def supports_pair?(source_lang, target_lang, opts) do
+    case supported_languages(opts) do
       {:ok, languages} ->
         source = normalize_lang_code(source_lang)
         target = normalize_lang_code(target_lang)

@@ -116,8 +116,8 @@ defmodule Bonfire.Translation.DeepL do
   end
 
   @impl true
-  def supports_pair?(source_lang, target_lang) do
-    case supported_languages() do
+  def supports_pair?(source_lang, target_lang, opts) do
+    case supported_languages(opts) do
       {:ok, languages} ->
         source = normalize_lang_code(source_lang)
         target = normalize_lang_code(target_lang)
@@ -170,7 +170,7 @@ defmodule Bonfire.Translation.DeepL do
 
   defp maybe_configure(opts) do
     if api_key = Settings.get([__MODULE__, :api_key], [], opts) do
-      Deepl.set_api_key(config[:api_key])
+      Deepl.set_api_key(api_key)
     end
   end
 end
