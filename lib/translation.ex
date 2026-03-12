@@ -215,7 +215,8 @@ defmodule Bonfire.Translation do
     |> Enum.any?(fn adapter ->
       config =
         Settings.get(adapter, [], opts)
-        |> flood("config for #{adapter}")
+
+      # |> debug("config for #{adapter}")
 
       not is_nil(config[:api_key]) or not is_nil(config[:base_url])
     end)
