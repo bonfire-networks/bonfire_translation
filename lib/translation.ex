@@ -240,7 +240,7 @@ defmodule Bonfire.Translation do
     case ProcessTree.get(:bonfire_translation_adapters) do
       adapters_list when is_list(adapters_list) and adapters_list != [] ->
         adapters_list
-        |> flood("Using process-level translation adapters")
+        |> debug("Using process-level translation adapters")
 
       _ ->
         # Get all registered adapters from the behaviour
