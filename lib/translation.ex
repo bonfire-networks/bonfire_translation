@@ -7,7 +7,7 @@ defmodule Bonfire.Translation do
   import Bonfire.Common.Modularity.DeclareHelpers
 
   declare_extension(
-    "Bonfire Translation",
+    "Translation",
     icon: "bi:translate",
     description: l("An extension that provides translation capabilities using various adapters.")
   )
