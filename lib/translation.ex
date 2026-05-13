@@ -363,11 +363,11 @@ defmodule Bonfire.Translation do
   end
 
   defp cache_translation(key, translation) do
-    Cache.put(key, translation, expire: ttl_ms())
+    Cache.put(key, translation, expire: ttl_ms(), async: false)
   end
 
   defp cache_language(key, language) do
-    Cache.put(key, language, expire: ttl_ms())
+    Cache.put(key, language, expire: ttl_ms(), async: false)
   end
 
   defp ttl_ms do
