@@ -31,21 +31,20 @@ defmodule Bonfire.Translation.LibreTranslate do
 
   @impl true
   def translate(text, source_lang, target_lang, opts) do
-    maybe_configure(opts)
+    with {:ok, server} <- server_opts(opts) do
+      source_lang = source_lang || "auto"
 
-    source_lang = source_lang || "auto"
+      opts =
+        opts
+        |> Keyword.put(:format, normalize_format(opts[:format]))
+        |> Keyword.merge(server)
 
-    opts =
-      opts
-      |> Keyword.put(:format, normalize_format(opts[:format]))
-
-    do_translate(text, source_lang, target_lang, opts)
+      do_translate(text, source_lang, target_lang, opts)
+    end
   end
 
   @impl true
   def translate_batch(texts, source_lang, target_lang, opts) do
-    maybe_configure(opts)
-
     source_lang = source_lang || "auto"
 
     opts =
@@ -76,12 +75,11 @@ defmodule Bonfire.Translation.LibreTranslate do
 
   @impl true
   def detect_language(text, opts) do
-    maybe_configure(opts)
-
-    case LibreTranslate.Detector.detect(text) do
-      {:ok, [%{"language" => lang, "confidence" => confidence} | _]} ->
-        {:ok, %{language: normalize_lang_code(lang), confidence: confidence / 100.0}}
-
+    with {:ok, server} <- server_opts(opts),
+         {:ok, [%{"language" => lang, "confidence" => confidence} | _]} <-
+           LibreTranslate.Detector.detect(text, server) do
+      {:ok, %{language: normalize_lang_code(lang), confidence: confidence / 100.0}}
+    else
       {:ok, []} ->
         {:error, :no_language_detected}
 
@@ -92,9 +90,13 @@ defmodule Bonfire.Translation.LibreTranslate do
 
   @impl true
   def supported_languages(opts) do
-    maybe_configure(opts)
+    with {:ok, server} <- server_opts(opts) do
+      server_languages(server)
+    end
+  end
 
-    case LibreTranslate.Language.get_languages() do
+  defp server_languages(server) do
+    case LibreTranslate.Language.get_languages(server) do
       {:ok, languages} ->
         normalized =
           Enum.map(languages, fn %{"code" => code, "name" => name, "targets" => targets} ->
@@ -130,9 +132,10 @@ defmodule Bonfire.Translation.LibreTranslate do
 
   @impl true
   def available?(opts) do
-    maybe_configure(opts)
-
-    LibreTranslate.Health.healthy?() || false
+    case server_opts(opts) do
+      {:ok, server} -> LibreTranslate.Health.healthy?(server) || false
+      _refused -> false
+    end
   rescue
     e ->
       false
@@ -150,17 +153,18 @@ defmodule Bonfire.Translation.LibreTranslate do
   defp normalize_format("html"), do: "html"
   defp normalize_format(_), do: "text"
 
-  defp maybe_configure(opts) do
-    config = Settings.get(__MODULE__, opts)
+  # The server and key for this request: the user's own if they set one, otherwise the admin's. They're passed with each request rather than set globally, so one user's choice never applies to anyone else's translations. The admin's server may be on a private address (e.g. in Docker), but a user's own must be public.
+  defp server_opts(opts) do
+    config = Settings.get(__MODULE__, [], opts)
 
-    if config[:base_url] do
-      LibreTranslate.set_base_url(config[:base_url])
+    with :ok <- check_users_server(config[:base_url], Config.get([__MODULE__], [])[:base_url]) do
+      {:ok,
+       [base_url: config[:base_url], api_key: config[:api_key]]
+       |> Enum.reject(fn {_, value} -> is_nil(value) end)}
     end
-
-    if config[:api_key] do
-      LibreTranslate.set_api_key(config[:api_key])
-    end
-
-    config
   end
+
+  defp check_users_server(nil, _admins), do: :ok
+  defp check_users_server(admins, admins), do: :ok
+  defp check_users_server(users_own, _admins), do: Bonfire.Common.HTTP.SSRF.check(users_own)
 end
